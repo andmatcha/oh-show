@@ -24,7 +24,11 @@ const Login = () => {
     if (!formData.email.trim() || !formData.password.trim()) {
       setError("メールアドレスとパスワードを入力してください");
       return;
+    } else if (formData.email.length > 254) {
+      setError("メールアドレスは254文字以下で入力してください");
+      return;
     }
+    setError("");
 
     const sanitizedData: FormData = {
       email: formData.email.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
@@ -43,6 +47,7 @@ const Login = () => {
               name="email"
               type="email"
               required
+              maxLength={254}
               value={formData.email}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"

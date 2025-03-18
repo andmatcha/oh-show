@@ -37,7 +37,7 @@ const Submit = () => {
     console.log(dates);
   };
   return (
-    <Layout title="シフト登録">
+    <Layout title="シフト提出">
       <form onSubmit={(e) => handleSubmit(e, dates)}>
         <div className="pb-8">
           <Calender
