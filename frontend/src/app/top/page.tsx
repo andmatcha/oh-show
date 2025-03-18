@@ -43,13 +43,13 @@ const Top = () => {
             href={Url.admin.users}
             className="p-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-300 cursor-pointer"
           >
-            ユーザー一覧
+            ユーザーリスト
           </Link>
           <Link
             href={Url.admin.createUser}
             className="p-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-300 cursor-pointer"
           >
-            ユーザー追加
+            新規ユーザー追加
           </Link>
         </div>
       )}
