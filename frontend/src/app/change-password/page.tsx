@@ -48,6 +48,7 @@ const ChangePassword = () => {
       setError("同じパスワードは使用できません");
       return;
     }
+    setError("");
     const sanitizedData: FormData = {
       current_password: formData.current_password
         .replace(/</g, "&lt;")
