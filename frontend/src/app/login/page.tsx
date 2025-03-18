@@ -43,6 +43,7 @@ const Login = () => {
               name="email"
               type="email"
               required
+              maxLength={254}
               value={formData.email}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"
