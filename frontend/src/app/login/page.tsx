@@ -23,6 +23,7 @@ const Login = () => {
     e.preventDefault();
     if (!formData.email.trim() || !formData.password.trim()) {
       setError("メールアドレスとパスワードを入力してください");
+      return;
     }
 
     const sanitizedData: FormData = {
@@ -41,6 +42,7 @@ const Login = () => {
             <input
               name="email"
               type="email"
+              required
               value={formData.email}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"
@@ -51,6 +53,9 @@ const Login = () => {
             <input
               name="password"
               type="password"
+              required
+              minLength={8}
+              maxLength={32}
               value={formData.password}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"
