@@ -33,10 +33,9 @@ const Login = () => {
     console.log(sanitizedData);
   };
   return (
-    <Layout>
+    <Layout title="ログイン" hideUsername>
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-4 p-4">
-          <h2 className="text-2xl font-bold">ログイン</h2>
+        <div className="flex flex-col gap-4">
           <div>
             <h3>メールアドレス</h3>
             <input
@@ -59,7 +58,7 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="bg-blue-600 rounded-lg p-4 text-white hover:bg-blue-700 transition-all duration-300"
+            className="bg-blue-600 rounded-lg p-4 text-white hover:bg-blue-700 transition-all duration-300 cursor-pointer"
           >
             ログイン
           </button>
