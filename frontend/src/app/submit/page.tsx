@@ -31,7 +31,7 @@ const Submit = () => {
     setDates(newDates);
   };
 
-  const handleSubmit = (e: React.FormEvent, dates: number[]) => {
+  const handleSubmit = async (e: React.FormEvent, dates: number[]) => {
     e.preventDefault();
     // 提出処理
     console.log(dates);
