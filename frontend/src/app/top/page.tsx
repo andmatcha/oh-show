@@ -3,10 +3,14 @@
 import Layout from "@/components/Layout";
 import Url from "@/constants/url";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const Top = () => {
+  const router = useRouter();
+
   const handleClick = () => {
     // ログアウト処理
+    router.push(Url.login);
   };
   return (
     <Layout title="メニュー">
