@@ -21,7 +21,7 @@ const Top = () => {
           href={Url.submit}
           className="p-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-300 cursor-pointer"
         >
-          シフト登録
+          シフト提出
         </Link>
         <Link
           href={Url.changePassword}
