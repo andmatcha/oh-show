@@ -21,6 +21,12 @@ const Top = () => {
         >
           シフト登録
         </Link>
+        <Link
+          href={Url.changePassword}
+          className="p-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-300 cursor-pointer"
+        >
+          パスワード変更
+        </Link>
       </div>
       <button
         type="button"
