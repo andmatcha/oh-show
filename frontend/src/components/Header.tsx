@@ -1,3 +1,5 @@
+"use client";
+
 import Url from "@/constants/url";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
