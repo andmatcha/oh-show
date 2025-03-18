@@ -13,7 +13,7 @@ const Header = () => {
             href={Url.top}
             className="absolute top-1/2 -translate-y-1/2 right-4 text-white text-sm"
           >
-            TOPに戻る
+            ホームに戻る
           </Link>
         ) : (
           <></>
