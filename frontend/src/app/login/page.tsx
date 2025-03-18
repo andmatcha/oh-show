@@ -33,10 +33,9 @@ const Login = () => {
     console.log(sanitizedData);
   };
   return (
-    <Layout>
+    <Layout title="ログイン" hideUsername>
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-4 p-4">
-          <h2 className="text-2xl font-bold">ログイン</h2>
+        <div className="flex flex-col gap-4">
           <div>
             <h3>メールアドレス</h3>
             <input
