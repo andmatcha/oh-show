@@ -25,9 +25,9 @@ const Login = () => {
       setError("メールアドレスとパスワードを入力してください");
     }
 
-    const sanitizedData = {
+    const sanitizedData: FormData = {
       email: formData.email.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
-      name: formData.password.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+      password: formData.password.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
     };
     // ログイン処理
     console.log(sanitizedData);
