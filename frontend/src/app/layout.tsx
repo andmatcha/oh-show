@@ -12,6 +12,7 @@ const roboto = Roboto({
 const notoSansJp = Noto_Sans_JP({
   variable: "--font-noto",
   weight: ["400", "700"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
