@@ -29,7 +29,7 @@ function SignupContent() {
     }
 
     // トークンを検証して招待情報を取得
-    apiClient(`/users/invitation/${token}`, {
+    apiClient(`/invitations/verify?token=${token}`, {
       method: 'GET',
     })
       .then((data) => {
