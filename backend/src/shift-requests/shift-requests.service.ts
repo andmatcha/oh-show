@@ -17,19 +17,24 @@ export class ShiftRequestsService {
   ): Promise<{ message: string; count: number; shiftRequests: ShiftRequest[] }> {
     // 1. バリデーション
     this.validateYearMonth(yearMonth);
-    this.validateDates(yearMonth, dates);
 
-    // 2. 提出期間チェック（15日-20日）
+    // 2. 月曜日を除外（定休日なので自動除外）
+    const [year, month] = yearMonth.split('-').map(Number);
+    const validDates = dates.filter((date) => {
+      const dayOfWeek = new Date(Date.UTC(year, month - 1, date)).getUTCDay();
+      return dayOfWeek !== 1; // 月曜日（day=1）を除外
+    });
+
+    this.validateDates(yearMonth, validDates);
+
+    // 3. 提出期間チェック（15日-20日）
     this.validateSubmissionPeriod();
 
-    // 3. ShiftMonthレコードの存在確認（管理者が事前作成済みか確認）
+    // 4. ShiftMonthレコードの存在確認（管理者が事前作成済みか確認）
     await this.ensureShiftMonthExists(yearMonth);
 
-    // 4. 日付をDateTime配列に変換
-    const [year, month] = yearMonth.split('-').map(Number);
-    const dateTimes = dates.map(
-      (date) => new Date(year, month - 1, date, 0, 0, 0, 0),
-    );
+    // 5. 日付をDateTime配列に変換（UTC午前0時で統一）
+    const dateTimes = validDates.map((date) => new Date(Date.UTC(year, month - 1, date)));
 
     // 5. トランザクションでDELETE + CREATE
     const shiftRequests = await this.prisma.$transaction(async (tx) => {
@@ -38,8 +43,8 @@ export class ShiftRequestsService {
         where: {
           userId,
           date: {
-            gte: new Date(year, month - 1, 1),
-            lt: new Date(year, month, 1),
+            gte: new Date(Date.UTC(year, month - 1, 1)),
+            lt: new Date(Date.UTC(year, month, 1)),
           },
         },
       });
@@ -75,8 +80,8 @@ export class ShiftRequestsService {
       where: {
         userId,
         date: {
-          gte: new Date(year, month - 1, 1),
-          lt: new Date(year, month, 1),
+          gte: new Date(Date.UTC(year, month - 1, 1)),
+          lt: new Date(Date.UTC(year, month, 1)),
         },
       },
       orderBy: { date: 'asc' },
@@ -112,12 +117,6 @@ export class ShiftRequestsService {
         throw new BadRequestException(
           `Invalid date ${date} for ${yearMonth}`,
         );
-      }
-
-      // 月曜日（day=1）のチェック
-      const dayOfWeek = new Date(year, month - 1, date).getDay();
-      if (dayOfWeek === 1) {
-        throw new BadRequestException(`Cannot select Monday (date ${date})`);
       }
     }
   }

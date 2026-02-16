@@ -44,8 +44,8 @@ export class ShiftRequestsController {
     const shiftRequests =
       await this.shiftRequestsService.findUserShiftRequests(userId, yearMonth);
 
-    // フロントエンド用に日付の配列に変換
-    const dates = shiftRequests.map((sr) => new Date(sr.date).getDate());
+    // フロントエンド用に日付の配列に変換（UTC基準）
+    const dates = shiftRequests.map((sr) => sr.date.getUTCDate());
 
     return {
       yearMonth,
