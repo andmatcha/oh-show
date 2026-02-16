@@ -158,7 +158,7 @@ export class ShiftsService {
     };
   }
 
-  // シフト自動生成（次のタスクで実装）
+  // シフト自動生成（グリーディアルゴリズム）
   async generateShifts(
     yearMonth: string,
     requirements: Record<string, number>,
@@ -171,11 +171,162 @@ export class ShiftsService {
       slot: number;
     }>;
   }> {
-    // TODO: 自動生成アルゴリズムの実装
-    // 現在はダミー実装
-    return {
-      shifts: [],
-    };
+    this.validateYearMonth(yearMonth);
+
+    const [year, month] = yearMonth.split('-').map(Number);
+
+    // 全ユーザーを取得（削除されていないユーザーのみ）
+    const users = await this.prisma.user.findMany({
+      where: { isDeleted: false },
+      orderBy: { name: 'asc' },
+    });
+
+    // ユーザーごとのシフトリクエストを取得
+    const shiftRequests = await this.prisma.shiftRequest.findMany({
+      where: {
+        date: {
+          gte: new Date(Date.UTC(year, month - 1, 1)),
+          lt: new Date(Date.UTC(year, month, 1)),
+        },
+      },
+    });
+
+    // ユーザーIDと日付のマップを作成（高速検索用）
+    const requestMap = new Map<string, Set<number>>();
+    shiftRequests.forEach((req) => {
+      const userId = req.userId;
+      const day = req.date.getUTCDate();
+      if (!requestMap.has(userId)) {
+        requestMap.set(userId, new Set());
+      }
+      requestMap.get(userId)!.add(day);
+    });
+
+    // 手動設定済みのシフトをマップに変換
+    const manualShiftMap = new Map<string, string>(); // key: "date-slot", value: userId
+    manualShifts.forEach((shift) => {
+      manualShiftMap.set(`${shift.date}-${shift.slot}`, shift.userId);
+    });
+
+    // 結果のシフト配列
+    const resultShifts: Array<{
+      date: string;
+      userId: string | null;
+      isManual: boolean;
+      slot: number;
+    }> = [];
+
+    // ユーザーごとのアサイン状況を追跡
+    const userAssignments = new Map<string, number[]>(); // userId -> [assigned dates]
+    users.forEach((user) => {
+      userAssignments.set(user.id, []);
+    });
+
+    // 手動設定済みのシフトを結果に追加
+    manualShifts.forEach((shift) => {
+      resultShifts.push({
+        ...shift,
+        isManual: true,
+      });
+      const [y, m, d] = shift.date.split('-').map(Number);
+      userAssignments.get(shift.userId)!.push(d);
+    });
+
+    // 日付順にシフトを割り当て
+    const lastDay = new Date(year, month, 0).getDate();
+    for (let day = 1; day <= lastDay; day++) {
+      const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
+      // 月曜日（定休日）はスキップ
+      if (dayOfWeek === 1) {
+        continue;
+      }
+
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const requiredCount = requirements[dateStr] || this.getDefaultRequirement(dayOfWeek);
+
+      // 各スロットに割り当て
+      for (let slot = 1; slot <= requiredCount; slot++) {
+        // 手動設定済みの場合はスキップ
+        if (manualShiftMap.has(`${dateStr}-${slot}`)) {
+          continue;
+        }
+
+        // 割り当て可能なユーザーを探す
+        const assignedUser = this.findBestUser(
+          users,
+          day,
+          requestMap,
+          userAssignments,
+        );
+
+        resultShifts.push({
+          date: dateStr,
+          userId: assignedUser?.id || null,
+          isManual: false,
+          slot,
+        });
+
+        if (assignedUser) {
+          userAssignments.get(assignedUser.id)!.push(day);
+        }
+      }
+    }
+
+    return { shifts: resultShifts };
+  }
+
+  // 最適なユーザーを選択（グリーディアルゴリズム）
+  private findBestUser(
+    users: Array<{ id: string; name: string }>,
+    day: number,
+    requestMap: Map<string, Set<number>>,
+    userAssignments: Map<string, number[]>,
+  ): { id: string; name: string } | null {
+    // 候補ユーザーをスコア付けして選択
+    const candidates = users
+      .map((user) => {
+        const hasRequest = requestMap.get(user.id)?.has(day) || false;
+        const assignedDays = userAssignments.get(user.id) || [];
+        const assignedCount = assignedDays.length;
+
+        // 直近2日間にアサインされているかチェック（3連続を防ぐ）
+        const isConsecutive = assignedDays.includes(day - 1) && assignedDays.includes(day - 2);
+
+        // スコア計算
+        let score = 0;
+        if (hasRequest) score += 100; // 希望を出している: +100
+        score -= assignedCount * 10; // アサイン数が少ないほど優先: -10 * count
+        if (isConsecutive) score -= 1000; // 3連続になる場合: -1000（大きなペナルティ）
+
+        return { user, score, isConsecutive };
+      })
+      .filter((c) => !c.isConsecutive) // 3連続になるユーザーを除外
+      .sort((a, b) => b.score - a.score); // スコア順にソート
+
+    // 最もスコアが高いユーザーを選択
+    if (candidates.length > 0) {
+      return candidates[0].user;
+    }
+
+    // 3連続を許容しても候補がいない場合
+    const allCandidates = users
+      .map((user) => {
+        const assignedDays = userAssignments.get(user.id) || [];
+        const assignedCount = assignedDays.length;
+        return { user, assignedCount };
+      })
+      .sort((a, b) => a.assignedCount - b.assignedCount);
+
+    return allCandidates.length > 0 ? allCandidates[0].user : null;
+  }
+
+  // デフォルトの募集人数を取得
+  private getDefaultRequirement(dayOfWeek: number): number {
+    // 0: 日曜, 1: 月曜, ..., 6: 土曜
+    if (dayOfWeek === 1) return 0; // 月曜日（定休日）
+    if (dayOfWeek === 5 || dayOfWeek === 6) return 2; // 金曜・土曜
+    return 1; // その他の曜日
   }
 
   // バリデーション
