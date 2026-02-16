@@ -8,9 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Top = () => {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, dbUser } = useAuth();
 
-  const isAdmin = true; // 管理者判定
+  const isAdmin = dbUser?.role === 'ADMIN';
 
   const handleClick = async () => {
     try {
