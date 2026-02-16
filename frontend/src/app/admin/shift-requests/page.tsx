@@ -4,7 +4,6 @@ import Layout from "@/components/Layout";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
-import { useRouter } from "next/navigation";
 
 interface UserShiftData {
   id: string;
@@ -21,7 +20,6 @@ interface ShiftStatusResponse {
 
 const ShiftStatus = () => {
   const { getIdToken, dbUser, loading: authLoading } = useAuth();
-  const router = useRouter();
 
   const [yearMonth, setYearMonth] = useState<string>("");
   const [users, setUsers] = useState<UserShiftData[]>([]);

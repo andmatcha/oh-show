@@ -42,8 +42,9 @@ const PasswordSetupForm = ({ onSubmit, title, buttonText }: PasswordSetupFormPro
     setLoading(true);
     try {
       await onSubmit(password);
-    } catch (err: any) {
-      setError(err.message || 'エラーが発生しました');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'エラーが発生しました';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
