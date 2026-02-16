@@ -4,7 +4,9 @@ import Calender from "@/components/Calender";
 import Layout from "@/components/Layout";
 import { DEADLINE } from "@/constants/shift";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api";
 
 const Submit = () => {
   let year: number;
@@ -18,7 +20,50 @@ const Submit = () => {
     month = today.month() + 1;
   }
 
+  const { getIdToken } = useAuth();
+
   const [dates, setDates] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // 既存シフトの読み込み
+  useEffect(() => {
+    const loadExistingShifts = async () => {
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          setError("認証エラー: ログインし直してください");
+          setLoading(false);
+          return;
+        }
+
+        const yearMonth = `${year}-${month.toString().padStart(2, "0")}`;
+
+        const response = await apiClient(
+          `/shift-requests?yearMonth=${yearMonth}`,
+          {
+            method: "GET",
+            token,
+          }
+        );
+
+        setDates(response.dates || []);
+      } catch (err: unknown) {
+        console.error("Failed to load existing shifts:", err);
+        // 初回提出の場合は404エラーが返る可能性があるため、エラーは表示しない
+        const errorMessage = err instanceof Error ? err.message : "";
+        if (!errorMessage.includes("404")) {
+          setError("既存のシフト情報の読み込みに失敗しました");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExistingShifts();
+  }, [year, month, getIdToken]);
 
   const handleClick = (value: number | undefined) => {
     let newDates: number[] = [];
@@ -31,46 +76,138 @@ const Submit = () => {
     setDates(newDates);
   };
 
+  // 提出期間チェック
+  const isSubmissionPeriodOpen = (): boolean => {
+    const today = dayjs();
+    const currentDate = today.date();
+    return currentDate >= 15 && currentDate <= 20;
+  };
+
   const handleSubmit = async (e: React.FormEvent, dates: number[]) => {
     e.preventDefault();
-    // 提出処理
-    console.log(dates);
+    setSubmitting(true);
+    setError("");
+    setSuccessMessage("");
+
+    // バリデーション
+    if (dates.length === 0) {
+      setError("少なくとも1日選択してください");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        throw new Error("認証エラー: ログインし直してください");
+      }
+
+      const yearMonth = `${year}-${month.toString().padStart(2, "0")}`;
+
+      await apiClient("/shift-requests", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ yearMonth, dates }),
+      });
+
+      setSuccessMessage("シフト希望を提出しました");
+
+      // 成功メッセージを3秒後に消す
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err: unknown) {
+      console.error("Shift submission error:", err);
+
+      const errorMessage = err instanceof Error ? err.message : "";
+
+      if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+        setError("セッションが切れました。再度ログインしてください。");
+      } else if (
+        errorMessage.includes("403") ||
+        errorMessage.includes("Forbidden")
+      ) {
+        setError("シフト提出期間外です（毎月15日〜20日が提出期間です）");
+      } else if (
+        errorMessage.includes("fetch") ||
+        errorMessage.includes("network")
+      ) {
+        setError("ネットワークエラー: 接続を確認してください");
+      } else {
+        setError(errorMessage || "シフトの提出に失敗しました");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   return (
     <Layout title="シフト提出">
-      <form onSubmit={(e) => handleSubmit(e, dates)}>
-        <div className="pb-8">
-          <Calender
-            year={year}
-            month={month}
-            dates={dates}
-            setDates={setDates}
-            handleClick={handleClick}
-          />
+      {loading ? (
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <p>読み込み中...</p>
         </div>
-        <ul className="w-full flex flex-col gap-2 mt-4 mb-8 border border-gray-200 rounded-md p-2">
-          <li className="w-full flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full border border-pink-400 bg-pink-200"></div>
-            <p className="text-sm">選択中</p>
-          </li>
-          <li className="w-full flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full border border-sky-200 bg-sky-50"></div>
-            <p className="text-sm">未選択（選択可能）</p>
-          </li>
-          <li className="w-full flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full border border-transparent bg-gray-100"></div>
-            <p className="text-sm">選択不可</p>
-          </li>
-        </ul>
-        <div className="px-8">
-          <button
-            type="submit"
-            className="w-full bg-blue-600 rounded-lg p-4 text-white hover:bg-blue-700 transition-all duration-300 cursor-pointer"
-          >
-            提出
-          </button>
-        </div>
-      </form>
+      ) : (
+        <form onSubmit={(e) => handleSubmit(e, dates)}>
+          {/* 成功メッセージ */}
+          {successMessage && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {successMessage}
+            </div>
+          )}
+
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
+          {/* 提出期間外の警告 */}
+          {!isSubmissionPeriodOpen() && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+              シフト提出期間外です（毎月15日〜20日が提出期間です）
+            </div>
+          )}
+
+          <div className="pb-8">
+            <Calender
+              year={year}
+              month={month}
+              dates={dates}
+              setDates={setDates}
+              handleClick={handleClick}
+            />
+          </div>
+
+          <ul className="w-full flex flex-col gap-2 mt-4 mb-8 border border-gray-200 rounded-md p-2">
+            <li className="w-full flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full border border-pink-400 bg-pink-200"></div>
+              <p className="text-sm">選択中</p>
+            </li>
+            <li className="w-full flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full border border-sky-200 bg-sky-50"></div>
+              <p className="text-sm">未選択（選択可能）</p>
+            </li>
+            <li className="w-full flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full border border-transparent bg-gray-100"></div>
+              <p className="text-sm">選択不可</p>
+            </li>
+          </ul>
+
+          <div className="px-8">
+            <button
+              type="submit"
+              disabled={submitting || !isSubmissionPeriodOpen()}
+              className={`w-full rounded-lg p-4 text-white transition-all duration-300 ${
+                submitting || !isSubmissionPeriodOpen()
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              }`}
+            >
+              {submitting ? "提出中..." : "提出"}
+            </button>
+          </div>
+        </form>
+      )}
     </Layout>
   );
 };
