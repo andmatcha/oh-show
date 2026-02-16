@@ -25,6 +25,7 @@ const ShiftStatus = () => {
   const [users, setUsers] = useState<UserShiftData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   // 管理者権限チェック
   useEffect(() => {
@@ -120,6 +121,51 @@ const ShiftStatus = () => {
     return `${year}年${parseInt(month)}月`;
   };
 
+  // CSVダウンロード
+  const handleDownloadCsv = async () => {
+    setDownloading(true);
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        setError("認証エラー: ログインし直してください");
+        return;
+      }
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050/api';
+      const response = await fetch(
+        `${API_URL}/shift-requests/export-csv?yearMonth=${yearMonth}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("CSVのダウンロードに失敗しました");
+      }
+
+      // Blobとしてダウンロード
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `shift-requests-${yearMonth}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      console.error("CSV download error:", err);
+      setError(
+        err instanceof Error ? err.message : "CSVのダウンロードに失敗しました"
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout title="シフト提出状況">
@@ -161,6 +207,24 @@ const ShiftStatus = () => {
           <span className="text-gray-600">
             未提出: {users.filter((u) => !u.hasSubmitted).length}名
           </span>
+        </p>
+      </div>
+
+      {/* CSVダウンロードボタン */}
+      <div className="mb-6">
+        <button
+          onClick={handleDownloadCsv}
+          disabled={downloading || users.length === 0}
+          className={`px-6 py-3 rounded-lg text-white transition-all duration-300 ${
+            downloading || users.length === 0
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 cursor-pointer"
+          }`}
+        >
+          {downloading ? "ダウンロード中..." : "📥 CSVダウンロード"}
+        </button>
+        <p className="text-sm text-gray-600 mt-2">
+          日付ごとの出勤希望をCSV形式でダウンロードします
         </p>
       </div>
 

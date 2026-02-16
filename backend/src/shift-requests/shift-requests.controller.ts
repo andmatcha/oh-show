@@ -5,10 +5,11 @@ import {
   Body,
   Query,
   Req,
+  Res,
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { ShiftRequestsService } from './shift-requests.service';
 
@@ -74,5 +75,28 @@ export class ShiftRequestsController {
     }
 
     return this.shiftRequestsService.findAllShiftRequests(yearMonth);
+  }
+
+  // GET /api/shift-requests/export-csv?yearMonth=YYYY-MM - CSVエクスポート（管理者のみ）
+  @Get('export-csv')
+  async exportCsv(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query('yearMonth') yearMonth: string,
+  ) {
+    // 管理者権限チェック
+    if (req.user!.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    const csv = await this.shiftRequestsService.exportToCsv(yearMonth);
+
+    // CSVファイルとしてダウンロード
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="shift-requests-${yearMonth}.csv"`,
+    );
+    res.send('\uFEFF' + csv); // BOM付きでExcelでの文字化け防止
   }
 }

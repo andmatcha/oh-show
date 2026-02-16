@@ -265,4 +265,69 @@ export class ShiftRequestsService {
 
     return shiftMonth;
   }
+
+  async exportToCsv(yearMonth: string): Promise<string> {
+    this.validateYearMonth(yearMonth);
+
+    const [year, month] = yearMonth.split('-').map(Number);
+
+    // 全ユーザーを取得（削除されていないユーザーのみ、名前順）
+    const users = await this.prisma.user.findMany({
+      where: { isDeleted: false },
+      orderBy: { name: 'asc' },
+    });
+
+    // その月の全日付を取得（月曜日を除く）
+    const lastDay = new Date(year, month, 0).getDate();
+    const dates: Array<{ date: number; dateStr: string }> = [];
+
+    for (let day = 1; day <= lastDay; day++) {
+      const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+      if (dayOfWeek !== 1) {
+        // 月曜日（定休日）を除外
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        dates.push({ date: day, dateStr });
+      }
+    }
+
+    // 各ユーザーのシフトリクエストを取得
+    const userShifts = await Promise.all(
+      users.map(async (user) => {
+        const shiftRequests = await this.prisma.shiftRequest.findMany({
+          where: {
+            userId: user.id,
+            date: {
+              gte: new Date(Date.UTC(year, month - 1, 1)),
+              lt: new Date(Date.UTC(year, month, 1)),
+            },
+          },
+        });
+
+        // 日付のセットを作成（高速検索用）
+        const requestedDates = new Set(
+          shiftRequests.map((sr) => sr.date.getUTCDate()),
+        );
+
+        return {
+          name: user.name,
+          requestedDates,
+        };
+      }),
+    );
+
+    // CSVヘッダー行を生成
+    const headers = ['日付', ...userShifts.map((us) => us.name)];
+    const csvLines = [headers.join(',')];
+
+    // 各日付の行を生成
+    for (const { date, dateStr } of dates) {
+      const row = [
+        dateStr,
+        ...userShifts.map((us) => (us.requestedDates.has(date) ? '1' : '0')),
+      ];
+      csvLines.push(row.join(','));
+    }
+
+    return csvLines.join('\n');
+  }
 }
