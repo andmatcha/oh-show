@@ -10,6 +10,9 @@ import {
   sendPasswordResetEmail,
   verifyPasswordResetCode,
   confirmPasswordReset,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { apiClient } from '@/lib/api';
@@ -32,6 +35,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   verifyResetCode: (code: string) => Promise<string>;
   confirmNewPassword: (code: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   getIdToken: () => Promise<string | null>;
 }
 
@@ -45,6 +49,7 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => {},
   verifyResetCode: async () => '',
   confirmNewPassword: async () => {},
+  changePassword: async () => {},
   getIdToken: async () => null,
 });
 
@@ -111,6 +116,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await confirmPasswordReset(auth, code, newPassword);
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user || !user.email) {
+      throw new Error('ユーザーがログインしていません');
+    }
+
+    // 再認証が必要（セキュリティのため）
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+
+    // パスワードを更新
+    await updatePassword(user, newPassword);
+  };
+
   const getIdToken = async () => {
     if (!user) return null;
     return await user.getIdToken();
@@ -126,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     verifyResetCode,
     confirmNewPassword,
+    changePassword,
     getIdToken,
   };
 
