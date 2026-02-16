@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ShiftRequest } from '@prisma/client';
+import { ShiftRequest, ShiftMonth } from '@prisma/client';
 
 @Injectable()
 export class ShiftRequestsService {
@@ -31,12 +31,12 @@ export class ShiftRequestsService {
     this.validateSubmissionPeriod();
 
     // 4. ShiftMonthレコードの存在確認（管理者が事前作成済みか確認）
-    await this.ensureShiftMonthExists(yearMonth);
+    const shiftMonth = await this.ensureShiftMonthExists(yearMonth);
 
     // 5. 日付をDateTime配列に変換（UTC午前0時で統一）
     const dateTimes = validDates.map((date) => new Date(Date.UTC(year, month - 1, date)));
 
-    // 5. トランザクションでDELETE + CREATE
+    // 6. トランザクションでDELETE + CREATE + UPSERT Submission
     const shiftRequests = await this.prisma.$transaction(async (tx) => {
       // 既存のシフトリクエストを削除
       await tx.shiftRequest.deleteMany({
@@ -57,6 +57,23 @@ export class ShiftRequestsService {
           }),
         ),
       );
+
+      // ShiftMonthSubmission を upsert（作成または更新）
+      await tx.shiftMonthSubmission.upsert({
+        where: {
+          userId_shiftMonthId: {
+            userId,
+            shiftMonthId: shiftMonth.id,
+          },
+        },
+        create: {
+          userId,
+          shiftMonthId: shiftMonth.id,
+        },
+        update: {
+          updatedAt: new Date(),
+        },
+      });
 
       return created;
     });
@@ -88,6 +105,29 @@ export class ShiftRequestsService {
     });
   }
 
+  async hasSubmitted(userId: string, yearMonth: string): Promise<boolean> {
+    this.validateYearMonth(yearMonth);
+
+    const shiftMonth = await this.prisma.shiftMonth.findUnique({
+      where: { yearMonth },
+    });
+
+    if (!shiftMonth) {
+      return false;
+    }
+
+    const submission = await this.prisma.shiftMonthSubmission.findUnique({
+      where: {
+        userId_shiftMonthId: {
+          userId,
+          shiftMonthId: shiftMonth.id,
+        },
+      },
+    });
+
+    return !!submission;
+  }
+
   private validateYearMonth(yearMonth: string): void {
     const regex = /^\d{4}-\d{2}$/;
     if (!regex.test(yearMonth)) {
@@ -103,10 +143,13 @@ export class ShiftRequestsService {
   }
 
   private validateDates(yearMonth: string, dates: number[]): void {
-    if (!Array.isArray(dates) || dates.length === 0) {
-      throw new BadRequestException(
-        'Dates array is required and must not be empty',
-      );
+    if (!Array.isArray(dates)) {
+      throw new BadRequestException('Dates must be an array');
+    }
+
+    // 0日提出も許可するため、dates.length === 0 でもOK
+    if (dates.length === 0) {
+      return;
     }
 
     const [year, month] = yearMonth.split('-').map(Number);
@@ -132,7 +175,7 @@ export class ShiftRequestsService {
     }
   }
 
-  private async ensureShiftMonthExists(yearMonth: string): Promise<void> {
+  private async ensureShiftMonthExists(yearMonth: string): Promise<ShiftMonth> {
     const shiftMonth = await this.prisma.shiftMonth.findUnique({
       where: { yearMonth },
     });
@@ -148,5 +191,7 @@ export class ShiftRequestsService {
         `Shift month ${yearMonth} is ${shiftMonth.status}. Submissions are not allowed.`,
       );
     }
+
+    return shiftMonth;
   }
 }

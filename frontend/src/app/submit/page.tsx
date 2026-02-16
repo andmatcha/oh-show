@@ -14,6 +14,7 @@ const Submit = () => {
   const [month, setMonth] = useState<number | null>(null);
   const [dates, setDates] = useState<number[]>([]);
   const [originalDates, setOriginalDates] = useState<number[]>([]); // 元の状態を保存
+  const [hasSubmitted, setHasSubmitted] = useState(false); // 提出済みかどうか
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +76,7 @@ const Submit = () => {
         const existingDates = response.dates || [];
         setDates(existingDates);
         setOriginalDates(existingDates); // 元の状態を保存
+        setHasSubmitted(response.hasSubmitted || false); // 提出済み状態を保存
       } catch (err: unknown) {
         console.error("Failed to load existing shifts:", err);
         // 初回提出の場合は404エラーが返る可能性があるため、エラーは表示しない
@@ -130,12 +132,6 @@ const Submit = () => {
     setSuccessMessage("");
 
     // バリデーション
-    if (dates.length === 0) {
-      setError("少なくとも1日選択してください");
-      setSubmitting(false);
-      return;
-    }
-
     if (year === null || month === null) {
       setError("年月情報の読み込みに失敗しました");
       setSubmitting(false);
@@ -158,6 +154,7 @@ const Submit = () => {
 
       setSuccessMessage("シフト希望を提出しました");
       setOriginalDates([...dates]); // 提出成功後、現在の状態を元の状態として保存
+      setHasSubmitted(true); // 提出済み状態を更新
 
       // 成功メッセージを3秒後に消す
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -241,7 +238,7 @@ const Submit = () => {
           </ul>
 
           <div className="px-8">
-            {originalDates.length === 0 ? (
+            {!hasSubmitted ? (
               // 初回提出の場合
               <button
                 type="submit"

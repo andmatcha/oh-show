@@ -41,8 +41,9 @@ model User {
   isDeleted   Boolean  @default(false) @map("is_deleted")
 
   // リレーション
-  shiftRequests ShiftRequest[]
-  shifts        Shift[]
+  shiftRequests         ShiftRequest[]
+  shifts                Shift[]
+  shiftMonthSubmissions ShiftMonthSubmission[]
 
   @@map("users")
 }
@@ -70,6 +71,9 @@ model ShiftMonth {
   status    ShiftMonthStatus @default(OPEN)
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // リレーション
+  submissions ShiftMonthSubmission[]
 
   @@map("shift_months")
 }
@@ -113,4 +117,20 @@ model Shift {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("shifts")
+}
+
+// シフト月の提出状態管理テーブル
+model ShiftMonthSubmission {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  shiftMonthId String     @map("shift_month_id")
+  submittedAt  DateTime   @default(now()) @map("submitted_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // リレーション
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftMonth ShiftMonth @relation(fields: [shiftMonthId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shiftMonthId])
+  @@map("shift_month_submissions")
 }

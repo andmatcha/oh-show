@@ -47,9 +47,16 @@ export class ShiftRequestsController {
     // フロントエンド用に日付の配列に変換（UTC基準）
     const dates = shiftRequests.map((sr) => sr.date.getUTCDate());
 
+    // 提出済みかどうかを確認
+    const hasSubmitted = await this.shiftRequestsService.hasSubmitted(
+      userId,
+      yearMonth,
+    );
+
     return {
       yearMonth,
       dates,
+      hasSubmitted,
       shiftRequests,
     };
   }
