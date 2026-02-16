@@ -12,6 +12,11 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get('firebase/:firebaseUid')
+  async findByFirebaseUid(@Param('firebaseUid') firebaseUid: string) {
+    return this.usersService.findByFirebaseUid(firebaseUid);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.usersService.findById(id);

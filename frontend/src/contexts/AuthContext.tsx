@@ -12,9 +12,19 @@ import {
   confirmPasswordReset,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { apiClient } from '@/lib/api';
+
+interface DBUser {
+  id: string;
+  firebaseUid: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'STAFF';
+}
 
 interface AuthContextType {
   user: User | null;
+  dbUser: DBUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -27,6 +37,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  dbUser: null,
   loading: true,
   signIn: async () => {},
   signUp: async () => {},
@@ -47,11 +58,28 @@ export const useAuth = () => {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [dbUser, setDbUser] = useState<DBUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // Firebaseユーザーが存在する場合、バックエンドからDBユーザー情報を取得
+        try {
+          const userData = await apiClient(`/users/firebase/${firebaseUser.uid}`, {
+            method: 'GET',
+          });
+          setDbUser(userData);
+        } catch (error) {
+          console.error('ユーザー情報の取得に失敗しました:', error);
+          setDbUser(null);
+        }
+      } else {
+        setDbUser(null);
+      }
+
       setLoading(false);
     });
 
@@ -68,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    setDbUser(null);
   };
 
   const resetPassword = async (email: string) => {
@@ -89,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     user,
+    dbUser,
     loading,
     signIn,
     signUp,
