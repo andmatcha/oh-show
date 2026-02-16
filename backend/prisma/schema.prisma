@@ -1,15 +1,102 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+// ユーザー権限
+enum Role {
+  ADMIN // 管理者
+  STAFF // スタッフ
+}
+
+// シフト月のステータス
+enum ShiftMonthStatus {
+  OPEN // 提出受付中
+  CLOSED // 提出締切
+  GENERATED // シフト確定済み
+}
+
+// 確定シフトのステータス
+enum ShiftStatus {
+  CONFIRMED // 確定
+  SHORTAGE // 人数不足
+}
+
+// ユーザーテーブル
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique @map("firebase_uid")
+  email       String   @unique
+  name        String
+  role        Role     @default(STAFF)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  // リレーション
+  shiftRequests ShiftRequest[]
+  shifts        Shift[]
+
+  @@map("users")
+}
+
+// 月ごとのステータス管理テーブル
+model ShiftMonth {
+  id        String           @id @default(cuid())
+  yearMonth String           @unique @map("year_month") // YYYY-MM形式
+  openAt    DateTime         @map("open_at") // 基本 15日 0:00:00
+  closeAt   DateTime         @map("close_at") // 基本 20日 23:59:59
+  status    ShiftMonthStatus @default(OPEN)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@map("shift_months")
+}
+
+// 日ごとの必要人数テーブル
+model ShiftRequirement {
+  id            String   @id @default(cuid())
+  date          DateTime @unique // 日付（YYYY-MM-DD）
+  requiredCount Int      @default(0) @map("required_count") // 0〜3
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("shift_requirements")
+}
+
+// ユーザーの提出した希望シフト
+model ShiftRequest {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime // 希望する勤務日（YYYY-MM-DD）
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date]) // 同じユーザー・同じ日付は1件のみ
+  @@map("shift_requests")
+}
+
+// 確定したシフト
+model Shift {
+  id        String      @id @default(cuid())
+  date      DateTime // 勤務日（YYYY-MM-DD）
+  userId    String      @map("user_id")
+  status    ShiftStatus @default(CONFIRMED)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  // リレーション
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shifts")
 }
