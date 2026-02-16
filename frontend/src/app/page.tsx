@@ -5,10 +5,18 @@ import Url from "@/constants/url";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const Top = () => {
   const router = useRouter();
-  const { signOut, dbUser } = useAuth();
+  const { signOut, dbUser, user, loading } = useAuth();
+
+  // ログインチェック
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push(Url.login);
+    }
+  }, [loading, user, router]);
 
   const isAdmin = dbUser?.role === 'ADMIN';
 
@@ -22,6 +30,22 @@ const Top = () => {
       console.error('ログアウトに失敗しました:', error);
     }
   };
+
+  // ローディング中またはログインしていない場合
+  if (loading) {
+    return (
+      <Layout title="ホーム">
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <p>読み込み中...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    return null; // リダイレクト中は何も表示しない
+  }
+
   return (
     <Layout title="ホーム">
       <div className="py-2 flex flex-col gap-2 mb-4">
