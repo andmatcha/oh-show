@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 
 const Submit = () => {
-  const { getIdToken } = useAuth();
+  const { getIdToken, loading: authLoading } = useAuth();
 
   const [year, setYear] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
@@ -41,8 +41,13 @@ const Submit = () => {
     fetchCurrentOpenMonth();
   }, []);
 
-  // 既存シフトの読み込み（year, monthが確定した後に実行）
+  // 既存シフトの読み込み（year, monthが確定し、認証状態が確定した後に実行）
   useEffect(() => {
+    // 認証状態が確定するまで待機
+    if (authLoading) {
+      return;
+    }
+
     if (year === null || month === null) {
       return;
     }
@@ -80,7 +85,7 @@ const Submit = () => {
     };
 
     loadExistingShifts();
-  }, [year, month, getIdToken]);
+  }, [year, month, authLoading, getIdToken]);
 
   const handleClick = (value: number | undefined) => {
     let newDates: number[] = [];
