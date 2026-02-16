@@ -1,11 +1,11 @@
 const Url = {
   login: "/login",
   changePassword: "/change-password",
-  top: "/top",
+  top: "/",
   submit: "/submit",
   admin: {
     users: "/admin/users",
-    createUser: "/admin/create-user",
+    createUser: "/admin/users/new",
     shiftRequests: "/admin/shift-requests"
   }
 };
