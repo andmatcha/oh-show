@@ -13,6 +13,7 @@ const Submit = () => {
   const [year, setYear] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
   const [dates, setDates] = useState<number[]>([]);
+  const [originalDates, setOriginalDates] = useState<number[]>([]); // 元の状態を保存
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -71,7 +72,9 @@ const Submit = () => {
           }
         );
 
-        setDates(response.dates || []);
+        const existingDates = response.dates || [];
+        setDates(existingDates);
+        setOriginalDates(existingDates); // 元の状態を保存
       } catch (err: unknown) {
         console.error("Failed to load existing shifts:", err);
         // 初回提出の場合は404エラーが返る可能性があるため、エラーは表示しない
@@ -96,6 +99,21 @@ const Submit = () => {
       newDates = dates.filter((date) => date !== value);
     }
     setDates(newDates);
+  };
+
+  // 変更があるかどうかを判定
+  const hasChanges = (): boolean => {
+    if (dates.length !== originalDates.length) return true;
+    const sortedDates = [...dates].sort((a, b) => a - b);
+    const sortedOriginal = [...originalDates].sort((a, b) => a - b);
+    return !sortedDates.every((date, index) => date === sortedOriginal[index]);
+  };
+
+  // 元に戻す
+  const handleReset = () => {
+    setDates([...originalDates]);
+    setError("");
+    setSuccessMessage("");
   };
 
   // 提出期間チェック
@@ -139,6 +157,7 @@ const Submit = () => {
       });
 
       setSuccessMessage("シフト希望を提出しました");
+      setOriginalDates([...dates]); // 提出成功後、現在の状態を元の状態として保存
 
       // 成功メッセージを3秒後に消す
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -222,17 +241,49 @@ const Submit = () => {
           </ul>
 
           <div className="px-8">
-            <button
-              type="submit"
-              disabled={submitting || !isSubmissionPeriodOpen()}
-              className={`w-full rounded-lg p-4 text-white transition-all duration-300 ${
-                submitting || !isSubmissionPeriodOpen()
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-              }`}
-            >
-              {submitting ? "提出中..." : "提出"}
-            </button>
+            {originalDates.length === 0 ? (
+              // 初回提出の場合
+              <button
+                type="submit"
+                disabled={submitting || !isSubmissionPeriodOpen()}
+                className={`w-full rounded-lg p-4 text-white transition-all duration-300 ${
+                  submitting || !isSubmissionPeriodOpen()
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                }`}
+              >
+                {submitting ? "提出中..." : "提出"}
+              </button>
+            ) : (
+              // 提出済みの場合
+              <>
+                {/* 再提出ボタン: 変更がない場合はグレーアウト */}
+                <button
+                  type="submit"
+                  disabled={
+                    submitting || !isSubmissionPeriodOpen() || !hasChanges()
+                  }
+                  className={`w-full rounded-lg p-4 text-white transition-all duration-300 ${
+                    submitting || !isSubmissionPeriodOpen() || !hasChanges()
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                  }`}
+                >
+                  {submitting ? "提出中..." : "再提出"}
+                </button>
+
+                {/* 変更がある場合のみ「元に戻す」ボタンを表示 */}
+                {hasChanges() && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="w-full rounded-lg p-4 mt-4 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-all duration-300"
+                  >
+                    元に戻す
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </form>
       )}
