@@ -3,11 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ユーザー権限
@@ -45,6 +45,20 @@ model User {
   shifts        Shift[]
 
   @@map("users")
+}
+
+// 招待トークンテーブル
+model InvitationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique // ランダム生成されたトークン
+  email     String   // 招待されたユーザーのメールアドレス
+  name      String   // ユーザー名
+  role      Role     @default(STAFF) // 権限
+  expiresAt DateTime // 有効期限
+  used      Boolean  @default(false) // 使用済みフラグ
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("invitation_tokens")
 }
 
 // 月ごとのステータス管理テーブル
