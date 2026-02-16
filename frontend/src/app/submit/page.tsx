@@ -2,34 +2,51 @@
 
 import Calender from "@/components/Calender";
 import Layout from "@/components/Layout";
-import { DEADLINE } from "@/constants/shift";
 import dayjs from "dayjs";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 
 const Submit = () => {
-  let year: number;
-  let month: number;
-  const today = dayjs();
-  if (today.date() > DEADLINE) {
-    year = today.add(1, "month").year();
-    month = today.add(1, "month").month() + 1;
-  } else {
-    year = today.year();
-    month = today.month() + 1;
-  }
-
   const { getIdToken } = useAuth();
 
+  const [year, setYear] = useState<number | null>(null);
+  const [month, setMonth] = useState<number | null>(null);
   const [dates, setDates] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // 既存シフトの読み込み
+  // OPEN状態のシフト月を取得
   useEffect(() => {
+    const fetchCurrentOpenMonth = async () => {
+      try {
+        const response = await apiClient("/shift-months/current", {
+          method: "GET",
+        });
+
+        const [y, m] = response.yearMonth.split("-").map(Number);
+        setYear(y);
+        setMonth(m);
+      } catch (err: unknown) {
+        console.error("Failed to fetch current open month:", err);
+        setError(
+          "現在提出可能なシフト月が見つかりませんでした。管理者にお問い合わせください。"
+        );
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentOpenMonth();
+  }, []);
+
+  // 既存シフトの読み込み（year, monthが確定した後に実行）
+  useEffect(() => {
+    if (year === null || month === null) {
+      return;
+    }
+
     const loadExistingShifts = async () => {
       try {
         const token = await getIdToken();
@@ -92,6 +109,12 @@ const Submit = () => {
     // バリデーション
     if (dates.length === 0) {
       setError("少なくとも1日選択してください");
+      setSubmitting(false);
+      return;
+    }
+
+    if (year === null || month === null) {
+      setError("年月情報の読み込みに失敗しました");
       setSubmitting(false);
       return;
     }
@@ -170,8 +193,8 @@ const Submit = () => {
 
           <div className="pb-8">
             <Calender
-              year={year}
-              month={month}
+              year={year!}
+              month={month!}
               dates={dates}
               setDates={setDates}
               handleClick={handleClick}
