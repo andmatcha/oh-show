@@ -6,6 +6,7 @@ import {
   Query,
   Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
@@ -59,5 +60,19 @@ export class ShiftRequestsController {
       hasSubmitted,
       shiftRequests,
     };
+  }
+
+  // GET /api/shift-requests/all?yearMonth=YYYY-MM - 全ユーザーのシフト取得（管理者のみ）
+  @Get('all')
+  async findAllUsers(
+    @Req() req: Request,
+    @Query('yearMonth') yearMonth: string,
+  ) {
+    // 管理者権限チェック
+    if (req.user!.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    return this.shiftRequestsService.findAllShiftRequests(yearMonth);
   }
 }

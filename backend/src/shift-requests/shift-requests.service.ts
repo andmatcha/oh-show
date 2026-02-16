@@ -128,6 +128,77 @@ export class ShiftRequestsService {
     return !!submission;
   }
 
+  async findAllShiftRequests(yearMonth: string): Promise<{
+    yearMonth: string;
+    users: Array<{
+      id: string;
+      name: string;
+      email: string;
+      hasSubmitted: boolean;
+      dates: number[];
+    }>;
+  }> {
+    this.validateYearMonth(yearMonth);
+
+    const [year, month] = yearMonth.split('-').map(Number);
+
+    // 全ユーザーを取得（削除されていないユーザーのみ）
+    const users = await this.prisma.user.findMany({
+      where: { isDeleted: false },
+      orderBy: { name: 'asc' },
+    });
+
+    // ShiftMonthを取得（提出状況確認用）
+    const shiftMonth = await this.prisma.shiftMonth.findUnique({
+      where: { yearMonth },
+    });
+
+    // 各ユーザーのシフトリクエストを取得
+    const usersWithShifts = await Promise.all(
+      users.map(async (user) => {
+        const shiftRequests = await this.prisma.shiftRequest.findMany({
+          where: {
+            userId: user.id,
+            date: {
+              gte: new Date(Date.UTC(year, month - 1, 1)),
+              lt: new Date(Date.UTC(year, month, 1)),
+            },
+          },
+          orderBy: { date: 'asc' },
+        });
+
+        const dates = shiftRequests.map((sr) => sr.date.getUTCDate());
+
+        // 提出済みかどうかを確認
+        let hasSubmitted = false;
+        if (shiftMonth) {
+          const submission = await this.prisma.shiftMonthSubmission.findUnique({
+            where: {
+              userId_shiftMonthId: {
+                userId: user.id,
+                shiftMonthId: shiftMonth.id,
+              },
+            },
+          });
+          hasSubmitted = !!submission;
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          hasSubmitted,
+          dates,
+        };
+      }),
+    );
+
+    return {
+      yearMonth,
+      users: usersWithShifts,
+    };
+  }
+
   private validateYearMonth(yearMonth: string): void {
     const regex = /^\d{4}-\d{2}$/;
     if (!regex.test(yearMonth)) {
