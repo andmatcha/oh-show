@@ -4,15 +4,23 @@ import Layout from "@/components/Layout";
 import Url from "@/constants/url";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Top = () => {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const isAdmin = true; // 管理者判定
 
-  const handleClick = () => {
-    // ログアウト処理
-    router.push(Url.login);
+  const handleClick = async () => {
+    try {
+      // Firebase認証からサインアウト
+      await signOut();
+      // ログイン画面に遷移
+      router.push(Url.login);
+    } catch (error) {
+      console.error('ログアウトに失敗しました:', error);
+    }
   };
   return (
     <Layout title="ホーム">
