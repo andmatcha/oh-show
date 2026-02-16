@@ -18,15 +18,9 @@ enum Role {
 
 // シフト月のステータス
 enum ShiftMonthStatus {
-  OPEN // 提出受付中
-  CLOSED // 提出締切
-  GENERATED // シフト確定済み
-}
-
-// 確定シフトのステータス
-enum ShiftStatus {
-  CONFIRMED // 確定
-  SHORTAGE // 人数不足
+  OPEN      // 提出受付中
+  CLOSED    // 提出締切
+  PUBLISHED // シフト確定・公開済み
 }
 
 // ユーザーテーブル
@@ -74,6 +68,7 @@ model ShiftMonth {
 
   // リレーション
   submissions ShiftMonthSubmission[]
+  shifts      Shift[]
 
   @@map("shift_months")
 }
@@ -106,16 +101,20 @@ model ShiftRequest {
 
 // 確定したシフト
 model Shift {
-  id        String      @id @default(cuid())
-  date      DateTime // 勤務日（YYYY-MM-DD）
-  userId    String      @map("user_id")
-  status    ShiftStatus @default(CONFIRMED)
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  id           String     @id @default(cuid())
+  shiftMonthId String     @map("shift_month_id")
+  date         DateTime   @db.Date // 勤務日（YYYY-MM-DD）
+  userId       String?    @map("user_id") // nullableにする（空欄可）
+  isManual     Boolean    @default(false) @map("is_manual") // 手動設定かどうか
+  slot         Int        @default(1) // 何番目の枠か (1 or 2)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   // リレーション
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftMonth ShiftMonth @relation(fields: [shiftMonthId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@unique([shiftMonthId, date, slot]) // 同じ日・同じ枠に重複なし
   @@map("shifts")
 }
 

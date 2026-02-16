@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { ShiftRequestsModule } from './shift-requests/shift-requests.module';
 import { ShiftMonthsModule } from './shift-months/shift-months.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { ShiftsModule } from './shifts/shifts.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { InvitationsModule } from './invitations/invitations.module';
     ShiftRequestsModule,
     ShiftMonthsModule,
     InvitationsModule,
+    ShiftsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
