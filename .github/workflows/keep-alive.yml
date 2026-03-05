@@ -1,0 +1,22 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # 10分おきに実行
+  workflow_dispatch: # 手動実行も可能にする
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend and DB
+        run: |
+          if [ -z "${{ secrets.BACKEND_URL }}" ]; then
+            echo "Error: BACKEND_URL secret is not set."
+            exit 1
+          fi
+          # 末尾のスラッシュを削除して /api/health を付加
+          URL=$(echo "${{ secrets.BACKEND_URL }}" | sed 's:/*$::')/api/health
+          echo "Pinging $URL ..."
+          curl -s -f "$URL" || (echo "Failed to ping $URL" && exit 1)
+          echo "Success!"
