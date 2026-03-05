@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { User, Role } from '@prisma/client';
@@ -6,15 +6,22 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private supabaseService: SupabaseService,
   ) {}
 
   async findBySupabaseUid(supabaseUid: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { supabaseUid },
-    });
+    try {
+      return await this.prisma.user.findUnique({
+        where: { supabaseUid },
+      });
+    } catch (error) {
+      this.logger.error(`Error finding user by supabaseUid: ${supabaseUid}`, error);
+      throw error;
+    }
   }
 
   async findById(id: string): Promise<User | null> {
