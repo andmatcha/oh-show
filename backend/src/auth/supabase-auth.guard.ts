@@ -4,13 +4,13 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { FirebaseService } from '../firebase/firebase.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
-export class FirebaseAuthGuard implements CanActivate {
+export class SupabaseAuthGuard implements CanActivate {
   constructor(
-    private firebaseService: FirebaseService,
+    private supabaseService: SupabaseService,
     private usersService: UsersService,
   ) {}
 
@@ -25,17 +25,17 @@ export class FirebaseAuthGuard implements CanActivate {
     const token = authHeader.substring(7);
 
     try {
-      const decodedToken = await this.firebaseService.verifyToken(token);
+      const decodedUser = await this.supabaseService.verifyToken(token);
 
       // データベースからユーザー情報を取得
-      let user = await this.usersService.findByFirebaseUid(decodedToken.uid);
+      let user = await this.usersService.findBySupabaseUid(decodedUser.id);
 
-      // ユーザーが存在しない場合は新規作成
+      // ユーザーが存在しない場合は新規作成（自動プロビジョニングが必要な場合）
       if (!user) {
         user = await this.usersService.create({
-          firebaseUid: decodedToken.uid,
-          email: decodedToken.email || '',
-          name: decodedToken.name || decodedToken.email || 'Unknown',
+          supabaseUid: decodedUser.id,
+          email: decodedUser.email || '',
+          name: (decodedUser.user_metadata?.name as string) || decodedUser.email || 'Unknown',
         });
       }
 

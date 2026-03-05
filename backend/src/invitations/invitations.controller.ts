@@ -9,7 +9,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { InvitationsService } from './invitations.service';
 import { Role } from '@prisma/client';
 
@@ -19,7 +19,7 @@ export class InvitationsController {
 
   // POST /api/invitations - 招待トークン生成（管理者のみ）
   @Post()
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(SupabaseAuthGuard)
   async createInvitation(
     @Req() req: Request,
     @Body()
