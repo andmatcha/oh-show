@@ -38,8 +38,9 @@ function ResetPasswordContent() {
       await confirmNewPassword(password);
       // パスワード再設定完了後、ログイン画面へリダイレクト
       router.push('/login?reset=true');
-    } catch (err: any) {
-      setError(err.message || 'パスワードの更新に失敗しました');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'パスワードの更新に失敗しました';
+      setError(errorMessage);
     }
   };
 
