@@ -33,7 +33,7 @@ enum ShiftStatus {
 // ユーザーテーブル
 model User {
   id          String   @id @default(cuid())
-  firebaseUid String   @unique @map("firebase_uid")
+  supabaseUid String   @unique @map("supabase_uid")
   email       String   @unique
   name        String
   role        Role     @default(STAFF)

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
-import { FirebaseModule } from './firebase/firebase.module';
+import { SupabaseModule } from './supabase/supabase.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ShiftRequestsModule } from './shift-requests/shift-requests.module';
@@ -12,7 +12,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 @Module({
   imports: [
     PrismaModule,
-    FirebaseModule,
+    SupabaseModule,
     UsersModule,
     AuthModule,
     ShiftRequestsModule,

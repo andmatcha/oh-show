@@ -9,11 +9,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ShiftRequestsService } from './shift-requests.service';
 
 @Controller('shift-requests')
-@UseGuards(FirebaseAuthGuard) // 全エンドポイントで認証必須
+@UseGuards(SupabaseAuthGuard) // 全エンドポイントで認証必須
 export class ShiftRequestsController {
   constructor(private readonly shiftRequestsService: ShiftRequestsService) {}
 
