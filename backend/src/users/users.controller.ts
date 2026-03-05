@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, Req, NotFoundException } from '@nestjs/common';
 import { Request } from 'express';
 import { UsersService } from './users.service';
 import { Role } from '@prisma/client';
@@ -15,7 +15,11 @@ export class UsersController {
   // SupabaseのUIDからDBユーザーを取得する
   @Get('uid/:supabaseUid')
   async findBySupabaseUid(@Param('supabaseUid') supabaseUid: string) {
-    return this.usersService.findBySupabaseUid(supabaseUid);
+    const user = await this.usersService.findBySupabaseUid(supabaseUid);
+    if (!user) {
+      throw new NotFoundException(`User with Supabase UID ${supabaseUid} not found`);
+    }
+    return user;
   }
 
   @Get(':id')
