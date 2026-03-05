@@ -12,11 +12,10 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  // 以前のfirebaseUidのエンドポイントをsupabaseUid向けに維持
-  // フロントエンドの AuthContext.tsx が /users/firebase/:id を叩いているため、互換性のためにパスは残す
-  @Get('firebase/:supabaseUid')
-  async findBySupabaseUid(@Param('supabaseUid') firebaseUid: string) {
-    return this.usersService.findBySupabaseUid(firebaseUid);
+  // SupabaseのUIDからDBユーザーを取得する
+  @Get('uid/:supabaseUid')
+  async findBySupabaseUid(@Param('supabaseUid') supabaseUid: string) {
+    return this.usersService.findBySupabaseUid(supabaseUid);
   }
 
   @Get(':id')

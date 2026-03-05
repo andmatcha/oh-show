@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/api';
 
 interface DBUser {
   id: string;
-  firebaseUid: string; // Prismaスキーマでこの名前になっている可能性があるため維持（適宜リネーム推奨）
+  supabaseUid: string;
   email: string;
   name: string;
   role: 'ADMIN' | 'STAFF';
@@ -89,8 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchDBUser = async (userId: string) => {
     try {
-      // バックエンドのエンドポイントが /users/firebase/:id のままの場合はそれに合わせる
-      const userData = await apiClient(`/users/firebase/${userId}`, {
+      const userData = await apiClient(`/users/uid/${userId}`, {
         method: 'GET',
       });
       setDbUser(userData);

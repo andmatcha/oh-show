@@ -22,7 +22,7 @@ const Top = () => {
 
   const handleClick = async () => {
     try {
-      // Firebase認証からサインアウト
+      // Supabase認証からサインアウト
       await signOut();
       // ログイン画面に遷移
       router.push(Url.login);
