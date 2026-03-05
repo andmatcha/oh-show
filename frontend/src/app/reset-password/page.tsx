@@ -1,50 +1,46 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Layout from '@/components/Layout';
 import PasswordSetupForm from '@/components/PasswordSetupForm';
 
 function ResetPasswordContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const { verifyResetCode, confirmNewPassword } = useAuth();
+  const { confirmNewPassword } = useAuth();
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const oobCode = searchParams.get('oobCode');
+    // SupabaseはURLハッシュ(#)にアクセストークンを含めてリダイレクトする
+    // セッションが確立されているか確認
+    const checkSession = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        setError('無効なリンクまたは期限切れのセッションです。もう一度パスワード再設定をリクエストしてください。');
+        setLoading(false);
+        return;
+      }
 
-    if (!oobCode) {
-      setError('無効なリンクです');
+      setEmail(session.user.email ?? 'ユーザー');
       setLoading(false);
-      return;
-    }
+    };
 
-    // トークンを検証してメールアドレスを取得
-    verifyResetCode(oobCode)
-      .then((userEmail) => {
-        setEmail(userEmail);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('リンクが無効または期限切れです');
-        setLoading(false);
-      });
-  }, [searchParams, verifyResetCode]);
+    checkSession();
+  }, []);
 
   const handleSubmit = async (password: string) => {
-    const oobCode = searchParams.get('oobCode');
-    if (!oobCode) {
-      throw new Error('無効なリンクです');
+    try {
+      await confirmNewPassword(password);
+      // パスワード再設定完了後、ログイン画面へリダイレクト
+      router.push('/login?reset=true');
+    } catch (err: any) {
+      setError(err.message || 'パスワードの更新に失敗しました');
     }
-
-    await confirmNewPassword(oobCode, password);
-
-    // パスワード再設定完了後、ログイン画面へリダイレクト
-    router.push('/login?reset=true');
   };
 
   if (loading) {
@@ -76,9 +72,11 @@ function ResetPasswordContent() {
   return (
     <Layout title="パスワード再設定" hideUsername>
       <div className="mb-4">
-        <p className="text-gray-600">
-          メールアドレス: <span className="font-bold">{email}</span>
-        </p>
+        {email && (
+          <p className="text-gray-600">
+            メールアドレス: <span className="font-bold">{email}</span>
+          </p>
+        )}
         <p className="text-sm text-gray-500 mt-2">
           新しいパスワードを設定してください
         </p>
