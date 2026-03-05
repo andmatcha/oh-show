@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { FirebaseService } from '../firebase/firebase.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { User, Role } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
@@ -8,12 +8,12 @@ import { randomBytes } from 'crypto';
 export class UsersService {
   constructor(
     private prisma: PrismaService,
-    private firebaseService: FirebaseService,
+    private supabaseService: SupabaseService,
   ) {}
 
-  async findByFirebaseUid(firebaseUid: string): Promise<User | null> {
+  async findBySupabaseUid(supabaseUid: string): Promise<User | null> {
     return this.prisma.user.findUnique({
-      where: { firebaseUid },
+      where: { supabaseUid },
     });
   }
 
@@ -30,14 +30,14 @@ export class UsersService {
   }
 
   async create(data: {
-    firebaseUid: string;
+    supabaseUid: string;
     email: string;
     name: string;
     role?: Role;
   }): Promise<User> {
     return this.prisma.user.create({
       data: {
-        firebaseUid: data.firebaseUid,
+        supabaseUid: data.supabaseUid,
         email: data.email,
         name: data.name,
         role: data.role || Role.STAFF,
@@ -133,20 +133,18 @@ export class UsersService {
     // トークンを検証
     const invitationToken = await this.verifyInvitationToken(token);
 
-    // Firebase Authにユーザーを作成
-    const firebaseUser = await this.firebaseService.createUser(
+    // Supabase Authにユーザーを作成
+    const supabaseUser = await this.supabaseService.createUser(
       invitationToken.email,
       invitationToken.name,
     );
 
-    // Firebaseでパスワードを設定
-    await this.firebaseService.getAuth().updateUser(firebaseUser.uid, {
-      password,
-    });
+    // Supabaseでパスワードを設定
+    await this.supabaseService.updateUserPassword(supabaseUser.id, password);
 
     // データベースにユーザーを作成
     const user = await this.create({
-      firebaseUid: firebaseUser.uid,
+      supabaseUid: supabaseUser.id,
       email: invitationToken.email,
       name: invitationToken.name,
       role: invitationToken.role,

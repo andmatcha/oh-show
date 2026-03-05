@@ -12,9 +12,11 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @Get('firebase/:firebaseUid')
-  async findByFirebaseUid(@Param('firebaseUid') firebaseUid: string) {
-    return this.usersService.findByFirebaseUid(firebaseUid);
+  // 以前のfirebaseUidのエンドポイントをsupabaseUid向けに維持
+  // フロントエンドの AuthContext.tsx が /users/firebase/:id を叩いているため、互換性のためにパスは残す
+  @Get('firebase/:supabaseUid')
+  async findBySupabaseUid(@Param('supabaseUid') firebaseUid: string) {
+    return this.usersService.findBySupabaseUid(firebaseUid);
   }
 
   @Get(':id')
@@ -26,7 +28,7 @@ export class UsersController {
   async create(
     @Body()
     createUserDto: {
-      firebaseUid: string;
+      supabaseUid: string;
       email: string;
       name: string;
       role?: Role;
