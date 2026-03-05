@@ -5,7 +5,7 @@ import { PrismaService } from './prisma/prisma.service';
 export class AppController {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Get('api/health')
+  @Get('health')
   async healthCheck() {
     // DBへの単純なクエリを実行してSupabaseのアクティビティを発生させる
     await this.prisma.$queryRaw`SELECT 1`;
