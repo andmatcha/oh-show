@@ -27,7 +27,7 @@ export class ShiftRequestsService {
 
     this.validateDates(yearMonth, validDates);
 
-    // 3. 提出期間チェック（15日-20日）
+    // 3. 提出期間チェック（毎月月末日まで）
     this.validateSubmissionPeriod();
 
     // 4. ShiftMonthレコードの存在確認（管理者が事前作成済みか確認）
@@ -238,10 +238,15 @@ export class ShiftRequestsService {
   private validateSubmissionPeriod(): void {
     const now = new Date();
     const currentDate = now.getDate();
+    const submissionEndDate = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+    ).getDate();
 
-    if (currentDate < 15 || currentDate > 20) {
+    if (currentDate < 15 || currentDate > submissionEndDate) {
       throw new ForbiddenException(
-        'Shift submission is only allowed between 15th and 20th of each month',
+        `Shift submission is only allowed between 15th and ${submissionEndDate}th of this month`,
       );
     }
   }

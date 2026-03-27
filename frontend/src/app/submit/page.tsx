@@ -119,10 +119,19 @@ const Submit = () => {
   };
 
   // 提出期間チェック
+  const getSubmissionEndDate = (): number => {
+    const today = dayjs();
+    return today.daysInMonth();
+  };
+
+  const getSubmissionPeriodMessage = (): string => {
+    return `シフト提出期間外です（${dayjs().year()}年${dayjs().month() + 1}月は15日〜${getSubmissionEndDate()}日が提出期間です）`;
+  };
+
   const isSubmissionPeriodOpen = (): boolean => {
     const today = dayjs();
     const currentDate = today.date();
-    return currentDate >= 15 && currentDate <= 20;
+    return currentDate >= 15 && currentDate <= getSubmissionEndDate();
   };
 
   const handleSubmit = async (e: React.FormEvent, dates: number[]) => {
@@ -169,7 +178,7 @@ const Submit = () => {
         errorMessage.includes("403") ||
         errorMessage.includes("Forbidden")
       ) {
-        setError("シフト提出期間外です（毎月15日〜20日が提出期間です）");
+        setError(getSubmissionPeriodMessage());
       } else if (
         errorMessage.includes("fetch") ||
         errorMessage.includes("network")
@@ -208,7 +217,7 @@ const Submit = () => {
           {/* 提出期間外の警告 */}
           {!isSubmissionPeriodOpen() && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-              シフト提出期間外です（毎月15日〜20日が提出期間です）
+              {getSubmissionPeriodMessage()}
             </div>
           )}
 
