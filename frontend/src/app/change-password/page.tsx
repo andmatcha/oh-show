@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 interface FormData {
-  current_password: string;
   new_password: string;
   new_password_confirm: string;
 }
@@ -16,7 +15,6 @@ const ChangePassword = () => {
   const router = useRouter();
 
   const [formData, setFormData] = useState<FormData>({
-    current_password: "",
     new_password: "",
     new_password_confirm: "",
   });
@@ -36,17 +34,14 @@ const ChangePassword = () => {
 
     // バリデーション
     if (
-      !formData.current_password.trim() ||
       !formData.new_password.trim() ||
       !formData.new_password_confirm.trim()
     ) {
-      setError("すべての項目を入力してください");
+      setError("パスワードを入力してください");
       return;
     }
 
     if (
-      formData.current_password.length < 8 ||
-      formData.current_password.length > 32 ||
       formData.new_password.length < 8 ||
       formData.new_password.length > 32 ||
       formData.new_password_confirm.length < 8 ||
@@ -61,20 +56,14 @@ const ChangePassword = () => {
       return;
     }
 
-    if (formData.current_password === formData.new_password) {
-      setError("同じパスワードは使用できません");
-      return;
-    }
-
     // パスワード変更処理
     setIsSubmitting(true);
     try {
-      await changePassword(formData.current_password, formData.new_password);
+      await changePassword(formData.new_password);
       setSuccessMessage("パスワードを変更しました。3秒後にトップページに戻ります。");
 
       // フォームをクリア
       setFormData({
-        current_password: "",
         new_password: "",
         new_password_confirm: "",
       });
@@ -87,9 +76,7 @@ const ChangePassword = () => {
       console.error("Password change error:", err);
       const errorMessage = err instanceof Error ? err.message : "";
 
-      if (errorMessage.includes("auth/wrong-password") || errorMessage.includes("invalid-credential")) {
-        setError("現在のパスワードが正しくありません");
-      } else if (errorMessage.includes("auth/weak-password")) {
+      if (errorMessage.includes("auth/weak-password")) {
         setError("新しいパスワードが弱すぎます");
       } else if (errorMessage.includes("auth/requires-recent-login")) {
         setError("セキュリティのため、再度ログインしてからパスワードを変更してください");
@@ -106,18 +93,6 @@ const ChangePassword = () => {
       <form onSubmit={handleSubmit}>
         <div className="mt-4 mb-8 flex flex-col gap-2">
           <div>
-            <h3>現在のパスワード</h3>
-            <input
-              name="current_password"
-              type="password"
-              required
-              minLength={8}
-              maxLength={32}
-              onChange={handleChange}
-              className="w-full border border-gray-400 rounded-md p-2"
-            />
-          </div>
-          <div>
             <h3>新しいパスワード</h3>
             <input
               name="new_password"
@@ -125,6 +100,7 @@ const ChangePassword = () => {
               required
               minLength={8}
               maxLength={32}
+              value={formData.new_password}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"
             />
@@ -137,6 +113,7 @@ const ChangePassword = () => {
               required
               minLength={8}
               maxLength={32}
+              value={formData.new_password_confirm}
               onChange={handleChange}
               className="w-full border border-gray-400 rounded-md p-2"
             />
