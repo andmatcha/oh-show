@@ -23,7 +23,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   verifyResetCode: (code: string) => Promise<string>;
   confirmNewPassword: (newPassword: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
   getIdToken: () => Promise<string | null>;
 }
 
@@ -131,10 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
-    // Supabaseでは現在のパスワードによる再認証なしでupdateUserが可能だが、
-    // セキュリティのために一旦signInで確認する手法もある。ここではシンプルにupdateのみ行う。
-    // ※Supabaseの推奨は別途パスワード変更用UIを提供すること
+  const changePassword = async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   };
