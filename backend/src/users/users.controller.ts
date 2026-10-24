@@ -1,33 +1,59 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, Req, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  Req,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { UsersService } from './users.service';
 import { Role } from '@prisma/client';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { AdminGuard } from '../auth/admin.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async findAll() {
     return this.usersService.findAll();
   }
 
-  // SupabaseのUIDからDBユーザーを取得する
+  // 本人はリクエストで指定されたIDではなく、認証済みユーザーから特定する
+  @Get('me')
+  @UseGuards(SupabaseAuthGuard)
+  async findMe(@Req() req: Request) {
+    return req.user!;
+  }
+
+  // UIDによる任意のユーザー検索は管理者のみ
   @Get('uid/:supabaseUid')
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async findBySupabaseUid(@Param('supabaseUid') supabaseUid: string) {
     const user = await this.usersService.findBySupabaseUid(supabaseUid);
     if (!user) {
-      throw new NotFoundException(`User with Supabase UID ${supabaseUid} not found`);
+      throw new NotFoundException(
+        `User with Supabase UID ${supabaseUid} not found`,
+      );
     }
     return user;
   }
 
   @Get(':id')
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
 
   @Post()
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async create(
     @Body()
     createUserDto: {
@@ -41,6 +67,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: { name?: string; role?: Role },
@@ -49,11 +76,13 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async remove(@Param('id') id: string) {
     return this.usersService.softDelete(id);
   }
 
   @Post('invite')
+  @UseGuards(SupabaseAuthGuard, AdminGuard)
   async invite(
     @Req() req: Request,
     @Body()
