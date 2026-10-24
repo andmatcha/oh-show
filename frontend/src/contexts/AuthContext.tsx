@@ -61,8 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
-      if (currentUser) {
-        await fetchDBUser(currentUser.id);
+      if (session) {
+        await fetchDBUser(session.access_token);
       }
       setLoading(false);
     };
@@ -74,8 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
-      if (currentUser) {
-        await fetchDBUser(currentUser.id);
+      if (session) {
+        await fetchDBUser(session.access_token);
       } else {
         setDbUser(null);
       }
@@ -87,10 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const fetchDBUser = async (userId: string) => {
+  const fetchDBUser = async (token: string) => {
     try {
-      const userData = await apiClient(`/users/uid/${userId}`, {
+      const userData = await apiClient('/users/me', {
         method: 'GET',
+        token,
       });
       setDbUser(userData);
     } catch (error) {

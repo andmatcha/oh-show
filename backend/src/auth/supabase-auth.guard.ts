@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UsersService } from '../users/users.service';
+import { Request } from 'express';
+import { User } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
@@ -15,7 +17,7 @@ export class SupabaseAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -24,27 +26,23 @@ export class SupabaseAuthGuard implements CanActivate {
 
     const token = authHeader.substring(7);
 
+    let decodedUser: User;
     try {
-      const decodedUser = await this.supabaseService.verifyToken(token);
-
-      // データベースからユーザー情報を取得
-      let user = await this.usersService.findBySupabaseUid(decodedUser.id);
-
-      // ユーザーが存在しない場合は新規作成（自動プロビジョニングが必要な場合）
-      if (!user) {
-        user = await this.usersService.create({
-          supabaseUid: decodedUser.id,
-          email: decodedUser.email || '',
-          name: (decodedUser.user_metadata?.name as string) || decodedUser.email || 'Unknown',
-        });
-      }
-
-      // リクエストオブジェクトにユーザー情報を追加
-      request.user = user;
-
-      return true;
-    } catch (error) {
+      decodedUser = await this.supabaseService.verifyToken(token);
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    // Supabaseの認証だけでは入場を許可せず、招待登録済みの有効なユーザーを要求する。
+    // DB障害は認証失敗として握りつぶさず、サーバーエラーとして伝播させる。
+    const user = await this.usersService.findBySupabaseUid(decodedUser.id);
+    if (!user || user.isDeleted) {
+      throw new UnauthorizedException(
+        'User is not registered or has been deleted',
+      );
+    }
+
+    request.user = user;
+    return true;
   }
 }
