@@ -2,11 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Role, User } from '@prisma/client';
 import * as request from 'supertest';
-import { PrismaModule } from '../prisma/prisma.module';
+import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
-import { SupabaseModule } from '../supabase/supabase.module';
 import { SupabaseService } from '../supabase/supabase.service';
-import { UsersModule } from './users.module';
 import { UsersService } from './users.service';
 
 describe('ユーザー管理APIのアクセス制御', () => {
@@ -43,7 +41,7 @@ describe('ユーザー管理APIのアクセス制御', () => {
   beforeAll(async () => {
     // 実際のモジュール構成・認証ガード・UsersServiceを使用し、外部通信だけを置換する。
     const module = await Test.createTestingModule({
-      imports: [PrismaModule, SupabaseModule, UsersModule],
+      imports: [AppModule],
     })
       .overrideProvider(PrismaService)
       .useValue(prisma)
@@ -164,6 +162,32 @@ describe('ユーザー管理APIのアクセス制御', () => {
       .set('Authorization', 'Bearer invalid-token')
       .expect(401);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it.each(['staff-token', 'admin-token'])(
+    '削除済みの%sを拒否する',
+    async (token) => {
+      const user = token === 'staff-token' ? staff : admin;
+      prisma.user.findUnique.mockResolvedValue({ ...user, isDeleted: true });
+      await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+      await send(adminRoutes[4], token).expect(401);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('Supabaseで認証できても未登録なら自動作成せず拒否する', async () => {
+    verifyToken.mockResolvedValue({
+      id: 'unregistered-uid',
+      email: 'new@example.invalid',
+    });
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set('Authorization', 'Bearer unregistered-token')
+      .expect(401);
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it.each(['staff-token', 'admin-token'])(
